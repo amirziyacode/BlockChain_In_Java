@@ -7,7 +7,6 @@ import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
-import java.util.Objects;
 
 import sun.security.provider.DSAPublicKeyImpl;
 
