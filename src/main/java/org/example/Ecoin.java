@@ -10,6 +10,7 @@ import org.example.model.Wallet;
 import org.example.threads.MiningThread;
 import org.example.threads.PeerClient;
 import org.example.threads.PeerServer;
+import org.example.threads.UI;
 import java.security.*;
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 public class Ecoin extends Application {
     @Override
     public void start(Stage stage) throws Exception {
-//        new UI().start(primaryStage);
+        new UI().start(stage);
         new PeerClient().start();
         new PeerServer(6000).start();
         new MiningThread().start();
