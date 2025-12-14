@@ -23,20 +23,16 @@ public class Block  implements Serializable {
 
     private ArrayList<Transaction> transactionLedger = new ArrayList<>();
 
-    public Block(byte[] prevHash,
-                 byte[] currentHash,
-                 byte[] minedBy, String timeStamp,
-                 Integer ledgerId,
-                 Integer miningPoints,
-                 Double luck, ArrayList<Transaction> transactionLedger) {
+    public Block(byte[] prevHash, byte[] currHash, String timeStamp, byte[] minedBy,Integer ledgerId,
+                 Integer miningPoints, Double luck, ArrayList<Transaction> transactionLedger) {
         this.prevHash = prevHash;
-        this.currentHash = currentHash;
-        this.minedBy = minedBy;
+        this.currentHash = currHash;
         this.timeStamp = timeStamp;
+        this.minedBy = minedBy;
         this.ledgerId = ledgerId;
+        this.transactionLedger = transactionLedger;
         this.miningPoints = miningPoints;
         this.luck = luck;
-        this.transactionLedger = transactionLedger;
     }
 
     public byte[] getPrevHash() {

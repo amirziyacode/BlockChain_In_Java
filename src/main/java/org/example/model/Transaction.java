@@ -94,18 +94,19 @@ public class Transaction implements Serializable {
     private String signatureFX;
     private Integer ledgerId;
 
-    public Transaction(byte[] from, String fromFX, byte[] to, String toFX, Integer value, String timeStamp, byte[] signature, String signatureFX, Integer ledgerId) {
+    public Transaction(byte[] from, byte[] to, Integer value, byte[] signature, Integer ledgerId,
+                       String timeStamp) {
+        Base64.Encoder encoder = Base64.getEncoder();
         this.from = from;
-        this.fromFX = fromFX;
+        this.fromFX = encoder.encodeToString(from);
         this.to = to;
-        this.toFX = toFX;
+        this.toFX = encoder.encodeToString(to);
         this.value = value;
-        this.timeStamp = timeStamp;
         this.signature = signature;
-        this.signatureFX = signatureFX;
+        this.signatureFX = encoder.encodeToString(signature);
         this.ledgerId = ledgerId;
+        this.timeStamp = timeStamp;
     }
-
 
     //Constructor for creating a new transaction and signing it.
     public Transaction(Wallet fromWallet,
