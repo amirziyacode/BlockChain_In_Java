@@ -48,7 +48,7 @@ public class MainWindowController {
                 new PropertyValueFactory<>("signatureFX"));
         timestamp.setCellValueFactory(
                 new PropertyValueFactory<>("timestamp"));
-        eCoins.setText(BlockChainData.getInstance().getWalletBallanceFX());
+        eCoins.setText(BlockChainData.getInstance().getWalletBalanceFX());
         publicKey.setText(encoder.encodeToString(WalletData.getInstance().getWallet().getPublicKey().getEncoded()));
         tableview.setItems(BlockChainData.getInstance().getTransactionLedgerFX());
         tableview.getSelectionModel().select(0);
@@ -64,14 +64,13 @@ public class MainWindowController {
             newTransactionController.getDialogPane().setContent(fxmlLoader.load());
         } catch (IOException e) {
             System.out.println("Cant load dialog");
-            e.printStackTrace();
             return;
         }
         newTransactionController.getDialogPane().getButtonTypes().add(ButtonType.FINISH);
         Optional<ButtonType> result = newTransactionController.showAndWait();
         if (result.isPresent() ) {
             tableview.setItems(BlockChainData.getInstance().getTransactionLedgerFX());
-            eCoins.setText(BlockChainData.getInstance().getWalletBallanceFX());
+            eCoins.setText(BlockChainData.getInstance().getWalletBalanceFX());
         }
     }
 
@@ -79,7 +78,7 @@ public class MainWindowController {
     public void refresh() {
         tableview.setItems(BlockChainData.getInstance().getTransactionLedgerFX());
         tableview.getSelectionModel().select(0);
-        eCoins.setText(BlockChainData.getInstance().getWalletBallanceFX());
+        eCoins.setText(BlockChainData.getInstance().getWalletBalanceFX());
     }
 
     @FXML

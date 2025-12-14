@@ -13,6 +13,7 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -22,7 +23,7 @@ public class BlockChainData {
 
     private final ObservableList<Transaction> newBlockTransactionsFX;
     private final ObservableList<Transaction> newBlockTransactions;
-    private final LinkedList<Block> currentBlockChain = new LinkedList<>();
+    private LinkedList<Block> currentBlockChain = new LinkedList<>();
     private Block latestBlock;
     private boolean exit = false;
     private int miningPoints;
@@ -267,8 +268,178 @@ public class BlockChainData {
         }
     }
 
+    public LinkedList<Block> getBlockchainConsensus(LinkedList<Block> receivedBC) {
+        try{
+            verifyBlockChain(receivedBC);
+            if(!Arrays.equals(receivedBC.getLast().getCurrentHash(),getCurrentBlockChain().getLast().getCurrentHash())){
+                if(checkIfOutdated(receivedBC) != null){
+                    return getCurrentBlockChain();
+                }else{
+                    if (checkWhichIsCreatedFirst(receivedBC) != null) {
+                        return getCurrentBlockChain();
+                    } else {
+                        if (compareMiningPointsAndLuck(receivedBC) != null) {
+                            return getCurrentBlockChain();
+                        }
+                    }
+                }
+            } else if (!receivedBC.getLast().getTransactionLedger().equals(getCurrentBlockChain()
+                    .getLast().getTransactionLedger())) {
+                updateTransactionLedgers(receivedBC);
+                System.out.println("Transaction ledgers updated");
+                return receivedBC;
+            } else {
+                System.out.println("blockchains are identical");
+            }
+        }catch (GeneralSecurityException e) {
+            System.out.println("Problem with GeneralSecurityException: " + e.getMessage());
+        }
+        return receivedBC;
+    }
+
+    private LinkedList<Block> checkIfOutdated(LinkedList<Block> receivedBC) {
+        //Check how old the blockchains are.
+        long lastMinedLocalBlock = LocalDateTime.parse
+                (getCurrentBlockChain().getLast().getTimeStamp()).toEpochSecond(ZoneOffset.UTC);
+        long lastMinedRcvdBlock = LocalDateTime.parse
+                (receivedBC.getLast().getTimeStamp()).toEpochSecond(ZoneOffset.UTC);
+        //if both are old just do nothing
+        if ((lastMinedLocalBlock + TIMEOUT_INTERVAL) < LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) &&
+                (lastMinedRcvdBlock + TIMEOUT_INTERVAL) < LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)) {
+            System.out.println("both are old check other peers");
+            //If your blockchain is old but the received one is new use the received one
+        } else if ((lastMinedLocalBlock + TIMEOUT_INTERVAL) < LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) &&
+                (lastMinedRcvdBlock + TIMEOUT_INTERVAL) >= LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)) {
+            //we reset the mining points since we weren't contributing until now.
+            setMiningPoints(0);
+            replaceBlockchainInDatabase(receivedBC);
+            setCurrentBlockChain(new LinkedList<>());
+            loadBlockChain();
+            System.out.println("received blockchain won!, local BC was old");
+            //If received one is old but local is new send ours to them
+        } else if ((lastMinedLocalBlock + TIMEOUT_INTERVAL) > LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) &&
+                (lastMinedRcvdBlock + TIMEOUT_INTERVAL) < LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)) {
+
+            return getCurrentBlockChain();
+        }
+        return null;
+    }
 
 
+    private LinkedList<Block> checkWhichIsCreatedFirst(LinkedList<Block> receivedBC) {
+        //Compare timestamps to see which one is created first.
+        long initRcvBlockTime = LocalDateTime.parse(receivedBC.getFirst().getTimeStamp())
+                .toEpochSecond(ZoneOffset.UTC);
+        long initLocalBlockTIme = LocalDateTime.parse(getCurrentBlockChain().getFirst()
+                .getTimeStamp()).toEpochSecond(ZoneOffset.UTC);
+        if (initRcvBlockTime < initLocalBlockTIme) {
+            //we reset the mining points since we weren't contributing until now.
+            setMiningPoints(0);
+            replaceBlockchainInDatabase(receivedBC);
+            setCurrentBlockChain(new LinkedList<>());
+            loadBlockChain();
+            System.out.println("PeerClient blockchain won!, PeerServer's BC was old");
+        } else if (initLocalBlockTIme < initRcvBlockTime) {
+            return getCurrentBlockChain();
+        }
+        return null;
+    }
+
+    private LinkedList<Block> compareMiningPointsAndLuck(LinkedList<Block> receivedBC)
+            throws GeneralSecurityException {
+        //check if both blockchains have the same prevHashes to confirm they are both
+        //contending to mine the last block
+        //if they are the same compare the mining points and luck in case of equal mining points
+        //of last block to see who wins
+        if (receivedBC.equals(getCurrentBlockChain())) {
+            //If received block has more mining points  or luck in case of tie
+            // transfer all transactions to the winning block and add them in DB.
+            if (receivedBC.getLast().getMiningPoints() > getCurrentBlockChain()
+                    .getLast().getMiningPoints() || receivedBC.getLast().getMiningPoints()
+                    .equals(getCurrentBlockChain().getLast().getMiningPoints()) &&
+                    receivedBC.getLast().getLuck() > getCurrentBlockChain().getLast().getLuck()) {
+                //remove the reward transaction from our losing block and
+                // transfer the transactions to the winning block
+                getCurrentBlockChain().getLast().getTransactionLedger().removeFirst();
+                for (Transaction transaction : getCurrentBlockChain().getLast().getTransactionLedger()) {
+                    if (!receivedBC.getLast().getTransactionLedger().contains(transaction)) {
+                        receivedBC.getLast().getTransactionLedger().add(transaction);
+                    }
+                }
+                receivedBC.getLast().getTransactionLedger().sort(transactionComparator);
+                //we are returning the mining points since our local block lost.
+                setMiningPoints(BlockChainData.getInstance().getMiningPoints() +
+                        getCurrentBlockChain().getLast().getMiningPoints());
+                replaceBlockchainInDatabase(receivedBC);
+                setCurrentBlockChain(new LinkedList<>());
+                loadBlockChain();
+                System.out.println("Received blockchain won!");
+            } else {
+                // remove the reward transaction from their losing block and transfer
+                // the transactions to our winning block
+                receivedBC.getLast().getTransactionLedger().removeFirst();
+                for (Transaction transaction : receivedBC.getLast().getTransactionLedger()) {
+                    if (!getCurrentBlockChain().getLast().getTransactionLedger().contains(transaction)) {
+                        getCurrentBlockChain().getLast().getTransactionLedger().add(transaction);
+                        addTransaction(transaction, false);
+                    }
+                }
+                getCurrentBlockChain().getLast().getTransactionLedger().sort(transactionComparator);
+                return getCurrentBlockChain();
+            }
+        }
+
+
+        return null;
+    }
+
+    private void updateTransactionLedgers(LinkedList<Block> receivedBC) throws GeneralSecurityException {
+        for (Transaction transaction : receivedBC.getLast().getTransactionLedger()) {
+            if (!getCurrentBlockChain().getLast().getTransactionLedger().contains(transaction) ) {
+                getCurrentBlockChain().getLast().getTransactionLedger().add(transaction);
+                System.out.println("current ledger id = " + getCurrentBlockChain().getLast().getLedgerId() + " transaction id = " + transaction.getLedgerId());
+                addTransaction(transaction, false);
+            }
+        }
+        getCurrentBlockChain().getLast().getTransactionLedger().sort(transactionComparator);
+        for (Transaction transaction : getCurrentBlockChain().getLast().getTransactionLedger()) {
+            if (!receivedBC.getLast().getTransactionLedger().contains(transaction) ) {
+                receivedBC.getLast().getTransactionLedger().add(transaction);
+            }
+        }
+        receivedBC.getLast().getTransactionLedger().sort(transactionComparator);
+    }
+
+
+
+
+    public LinkedList<Block> getCurrentBlockChain(){
+        return currentBlockChain;
+    }
+
+    public void setCurrentBlockChain(LinkedList<Block> currentBlockChain) {
+        this.currentBlockChain = currentBlockChain;
+    }
+
+    public static int getTimeoutInterval() { return TIMEOUT_INTERVAL; }
+
+    public static int getMiningInterval() { return MINING_INTERVAL; }
+
+    public int getMiningPoints() {
+        return miningPoints;
+    }
+
+    public void setMiningPoints(int miningPoints) {
+        this.miningPoints = miningPoints;
+    }
+
+    public boolean isExit() {
+        return exit;
+    }
+
+    public void setExit(boolean exit) {
+        this.exit = exit;
+    }
 
 
 

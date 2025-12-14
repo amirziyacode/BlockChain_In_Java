@@ -3,6 +3,7 @@ package org.example;
 
 import javafx.application.Application;
 import javafx.stage.Stage;
+import org.example.ServiceData.BlockChainData;
 import org.example.ServiceData.WalletData;
 import org.example.model.Block;
 import org.example.model.Transaction;
@@ -15,7 +16,7 @@ import java.security.*;
 import java.sql.*;
 import java.time.LocalDateTime;
 
-public class Ecoin extends Application {
+public class Econ extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         new UI().start(stage);
@@ -25,7 +26,7 @@ public class Ecoin extends Application {
     }
 
     @Override
-    public void init() throws Exception {
+    public void init() {
         try {
             //This creates your wallet if there is none and gives you a KeyPair.
             //We will create it in separate db for better security and ease of portability.
@@ -114,17 +115,17 @@ public class Ecoin extends Application {
                     ")"
             );
             if(initBlockRewardTransaction != null) {
-//                BlockChainData.getInstance().addTransaction(initBlockRewardTransaction,true);
-//                BlockChainData.getInstance().addTransactionState(initBlockRewardTransaction);
+                BlockChainData.getInstance().addTransaction(initBlockRewardTransaction,true);
+                BlockChainData.getInstance().addTransactionState(initBlockRewardTransaction);
             }
             blockchainStatement.close();
             blockchainConnection.close();
         }catch (SQLException | NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
             System.out.println("db failed: " + e.getClass());
         } catch (GeneralSecurityException e) {
-            e.printStackTrace();
+            System.out.println("GeneralSecurityException: " + e.getClass());
         }
 
-//        BlockChainData.getInstance().loadBlockChain();
+        BlockChainData.getInstance().loadBlockChain();
     }
 }

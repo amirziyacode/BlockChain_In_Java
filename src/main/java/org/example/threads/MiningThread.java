@@ -19,7 +19,7 @@ public class MiningThread extends  Thread {
              }else{
                  System.out.println("MINING NEW BLOCK");
                  BlockChainData.getInstance().mineBlock();
-                 System.out.println(BlockChainData.getInstance().getWalletBallanceFX());
+                 System.out.println(BlockChainData.getInstance().getWalletBalanceFX());
              }
             System.out.println(LocalDateTime.parse(BlockChainData.getInstance()
                     .getCurrentBlockChain().getLast().getTimeStamp()).toEpochSecond(ZoneOffset.UTC));
